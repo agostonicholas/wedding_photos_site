@@ -35,13 +35,15 @@ A signed device cookie identifies uploads from this browser. The server persists
 
 The album and background slideshow refresh every 10 seconds while visible; the disk index is cached for up to 5 seconds. The album supports loading additional pages. Photos are sorted by saved upload time, falling back to filesystem modification time for older files.
 
+The album uses the uploader's centered translucent card, script heading, and photo slideshow background, with a scrollable photo grid inside the card. “My uploads” shows photos belonging to this browser's signed identity. “Show photos by” filters by the guest name entered when uploading; people using the same name appear together. The dropdown includes all guest names, including names outside the loaded page. Choosing a guest clears “My uploads”; either filter button resets the guest selection. Guest lists and the unfiltered background photos accompany the existing gallery poll (`include=album`), so the album needs no additional polling requests for these features. Restart the backend and publish the updated album HTML, JavaScript, and CSS together.
+
 `logo.png` is the favicon. Visitors without a saved name first see `logo_large.png` on a pastel gradient, held for 1.6 seconds after the image loads before fading into the name prompt. Returning guests with a saved name skip the intro and its image download. There is no separate "intro seen" flag: clearing the saved name makes it appear again on the next visit. Image failures and a load timeout keep the name prompt accessible, and reduced-motion preferences disable the fade.
 
 Photos and videos retain their original bytes. Only photos appear in the album. Supported types are JPEG, PNG, HEIC/HEIF, WebP, MP4, QuickTime, and 3GPP. The server checks binary file signatures and derives extensions from detected content. Signature detection is not full decoding or malware scanning. There is no image conversion or thumbnail pipeline; some HEIC/HEIF originals may not preview in a particular browser. Click an album image to open its original.
 
 ## Limits and recovery
 
-Defaults: five files and 100 MiB per batch, 50 GiB of original media in writable storage, 300 upload requests per IP per 10 minutes, and 20 failed access-code attempts per IP per 15 minutes. The browser fetches actual limits from `/api/config`. Batch and storage byte limits include uploads currently in flight, and reject oversized streams while receiving them. The storage quota excludes metadata and read-only legacy roots; leave disk headroom for those. Run one server process per writable storage directory. If originals are added or removed outside the app, restart to recalculate quota usage.
+Defaults: ten files and 100 MiB per batch, 50 GiB of original media in writable storage, 300 upload requests per IP per 10 minutes, and 20 failed access-code attempts per IP per 15 minutes. The browser fetches actual limits from `/api/config`. Batch and storage byte limits include uploads currently in flight, and reject oversized streams while receiving them. The storage quota excludes metadata and read-only legacy roots; leave disk headroom for those. Run one server process per writable storage directory. If originals are added or removed outside the app, restart to recalculate quota usage.
 
 Files are checked before publishing. A failed save removes that batch's new originals, metadata, and temporary files; metadata errors fail the upload. A network failure after a successful save can still leave the browser uncertain, so check the album before retrying. Selected files remain available for retry after an error. An abrupt process or power failure can leave `.uploading` files in `incoming`; after stopping the server, these incomplete files can be removed. Back up the complete storage directory regularly; there is no automatic backup service.
 
@@ -128,6 +130,18 @@ BASE_URL=http://127.0.0.1:4100 STRESS_UPLOADS=20 STRESS_CONCURRENCY=5 npm run st
 ```
 
 This creates real test uploads in that temporary directory. The default is a valid tiny PNG; use `STRESS_IMAGE=/path/to/a/real/photo.png` for realistic payload sizes. Video tests require a real MP4: set `STRESS_VIDEO=/path/to/video.mp4` and `STRESS_VIDEO_RATIO=0.3`. Set `STRESS_ACCESS_CODE` if the target uses a different code. Remote targets require the explicit `STRESS_ALLOW_REMOTE=true` flag. Failures cause a nonzero exit status.
+
+For a mixed 50-guest test, run:
+
+```sh
+npm run stress:guests
+```
+
+This starts its own server on a random loopback port with temporary storage, independently of the running wedding server. It seeds 300 valid 3 MiB PNGs, models separate guest identities and image caches, and uses the actual 10-second polling interval. The four-minute workload includes 60 seconds with 50 idle slideshows; 120 seconds with 25 idle guests, 15 album browsers, and 10 uploaders; a 30-second burst where all 50 upload three photos each; and 30 seconds of recovery polling. Album browsing includes scrolling, pagination, and the browser-only filter. The default upload rate limit is retained, and every guest shares the loopback IP.
+
+Reports and server logs are saved under the ignored `.runtime/stress/` directory. Reports include response percentiles, request errors, transferred bytes, server CPU/memory/event-loop samples, and checks of saved file hashes, guest ownership, gallery totals, and incomplete uploads. Each signed API request includes a CORS preflight, conservatively assuming no preflight cache. The temporary photo storage and test server are removed after the run. A failed request or integrity check returns a nonzero exit status. This measures local server capacity; it does not measure public upload bandwidth, router forwarding, TLS, or actual phone rendering.
+
+Optional environment variables are `STRESS_GUESTS`, `STRESS_SEED_PHOTOS`, `STRESS_IMAGE_SIDE` (1024 by default), `STRESS_IDLE_SECONDS`, `STRESS_MIXED_SECONDS`, `STRESS_BURST_SECONDS`, `STRESS_RECOVERY_SECONDS`, and `STRESS_REPORT_DIR`.
 
 ## Repository
 

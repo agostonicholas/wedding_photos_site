@@ -254,11 +254,17 @@ async function createApp(config = createConfig(), dependencies = {}) {
   app.get('/api/gallery', async (req, res) => {
     const raw = req.query.limit === undefined ? 300 : Number(req.query.limit);
     const limit = Number.isFinite(raw) ? Math.max(1, Math.min(Math.floor(raw), 1000)) : 300;
-    let items = await gallery();
+    const allItems = await gallery();
+    let items = allItems;
     if (req.query.mine === 'true') items = items.filter(item => item.deviceId === req.deviceId);
+    if (typeof req.query.guest === 'string') items = items.filter(item => (item.uploaderName || 'Guest') === req.query.guest);
     const offset = Math.max(0, Math.floor(Number(req.query.offset) || 0));
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, items: items.slice(offset, offset + limit).map(item => publicItem(item, req)), total: items.length });
+    const album = req.query.include === 'album' ? {
+      guests: [...new Set(allItems.map(item => item.uploaderName || 'Guest'))].sort((a, b) => a.localeCompare(b)),
+      recent: allItems.slice(0, 20).map(item => publicItem(item, req)),
+    } : {};
+    res.json({ ok: true, items: items.slice(offset, offset + limit).map(item => publicItem(item, req)), total: items.length, ...album });
   });
   app.get(['/media/:source/:event/:date/:filename', '/media/:event/:date/:filename'], async (req, res, next) => {
     const { event, date, filename } = req.params;

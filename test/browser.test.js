@@ -216,9 +216,70 @@ test('album polls, preserves safe labels, and requests browser ownership from th
   await view.intervals.find(interval => interval.duration === 10000).callback();
   assert.equal(count, 2);
   document.querySelector('[data-filter="mine"]').click();
-  await waitFor(() => document.getElementById('gallery-status').textContent.includes('No photos uploaded'));
+  await waitFor(() => document.getElementById('gallery-status').textContent.includes('No photos in My uploads'));
   assert.ok(view.requests.some(request => request.url.includes('mine=true')));
   assert.equal(document.querySelectorAll('.gallery-card').length, 0);
+});
+test('album guest dropdown uses the full guest list, encodes names, and preserves the slideshow while filtering', async t => {
+  const name = '<img src=x> & Sara';
+  const recent = [{ id: 'recent', uploaderName: 'Nick', url: '/media/0/main-event/2026-01-01/recent.png', mimetype: 'image/png', uploadedAt: 1 }];
+  let names = ['Nick', name];
+  const view = page(t, 'album.html', async url => {
+    if (url === '/api/config') return config;
+    const query = new URL(url, 'http://localhost').searchParams;
+    const guest = query.get('guest');
+    return { ok: true, guests: names, recent, total: query.has('mine') ? 0 : 1,
+      items: query.has('mine') ? [] : [{ ...recent[0], uploaderName: guest || 'Nick' }] };
+  });
+  view.run('client.js'); view.run('album.js');
+  const { document, Event } = view.window;
+  const dropdown = document.getElementById('guest-filter');
+  await waitFor(() => dropdown.options.length === 3);
+  assert.equal([...dropdown.options].find(option => option.value === name).textContent, name);
+  assert.equal(dropdown.querySelector('img'), null);
+  const background = document.querySelector('#slideshow img');
+  assert.ok(background);
+  dropdown.value = name;
+  dropdown.dispatchEvent(new Event('change'));
+  await waitFor(() => document.getElementById('gallery-status').textContent.includes(`by ${name}`));
+  assert.ok(view.requests.some(request => request.url.includes(`guest=${encodeURIComponent(name)}`)));
+  assert.equal(document.querySelector('#slideshow img'), background);
+  assert.equal(document.querySelectorAll('.gallery-card img').length, 1);
+  names = [...names, 'New guest'];
+  await view.intervals.find(interval => interval.duration === 10000).callback();
+  assert.equal(dropdown.value, name);
+  assert.ok([...dropdown.options].some(option => option.value === 'New guest'));
+  document.querySelector('[data-filter="mine"]').click();
+  await waitFor(() => document.getElementById('gallery-status').textContent.includes('My uploads'));
+  assert.equal(dropdown.value, '');
+  assert.ok(view.requests.at(-1).url.includes('mine=true'));
+  assert.ok(!view.requests.at(-1).url.includes('guest='));
+  assert.equal(document.querySelector('#slideshow img'), background);
+  document.querySelector('[data-filter="all"]').click();
+  await waitFor(() => document.querySelector('.gallery-card'));
+  assert.equal(document.querySelector('[data-filter="all"]').getAttribute('aria-pressed'), 'true');
+  assert.ok(!view.requests.at(-1).url.includes('mine=true'));
+});
+test('album discards a slow earlier response when a different guest is selected', async t => {
+  let release;
+  const item = name => ({ id: name, uploaderName: name, url: `/media/0/main-event/2026-01-01/${name}.png`, uploadedAt: 1 });
+  const view = page(t, 'album.html', async url => {
+    if (url === '/api/config') return config;
+    const guest = new URL(url, 'http://localhost').searchParams.get('guest');
+    if (guest === 'Nick') await new Promise(resolve => { release = resolve; });
+    return { ok: true, guests: ['Nick', 'Sara'], recent: [item('Nick')], total: 1, items: [item(guest || 'Nick')] };
+  });
+  view.run('client.js'); view.run('album.js');
+  const document = view.window.document;
+  const dropdown = document.getElementById('guest-filter');
+  await waitFor(() => dropdown.options.length === 3);
+  dropdown.value = 'Nick'; dropdown.dispatchEvent(new view.window.Event('change'));
+  await waitFor(() => release);
+  dropdown.value = 'Sara'; dropdown.dispatchEvent(new view.window.Event('change'));
+  release();
+  await waitFor(() => document.querySelector('.gallery-card footer').textContent.startsWith('Sara'));
+  assert.equal(dropdown.value, 'Sara');
+  assert.match(document.getElementById('gallery-status').textContent, /by Sara/);
 });
 test('GitHub Pages routes API requests, slideshow images, and uploads to the home backend', async t => {
   const backend = 'https://nickserverphotodump.duckdns.org';

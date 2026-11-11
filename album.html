@@ -8,30 +8,39 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="album-body">
-    <main class="album-wrapper">
-      <div class="album-header">
-        <div>
-          <p class="eyebrow">Wedding Photo Drop</p>
-          <h1>Nick and Sara's Wedding Album</h1>
-          <p class="tagline">Browse everything guests have shared. New uploads appear automatically within a few seconds.</p>
-        </div>
-        <a class="primary-btn" href="index.html">Back to uploader</a>
-      </div>
+  <body class="upload-page album-body">
+    <div class="slideshow is-empty" id="slideshow" aria-hidden="true"></div>
+    <div class="slideshow-overlay" aria-hidden="true"></div>
+    <main class="upload-card album-wrapper">
+      <header class="album-header">
+        <p class="eyebrow" id="album-eyebrow">Guest</p>
+        <h1 id="album-heading">Wedding Album.</h1>
+        <p class="tagline">Browse the moments everyone shared.</p>
+      </header>
 
       <div class="gallery-filters" role="group" aria-label="Album filters">
         <button class="filter-btn active" data-filter="all" aria-pressed="true">All Photos</button>
-        <button class="filter-btn" data-filter="mine" aria-pressed="false">Photos From This Browser</button>
+        <button class="filter-btn" data-filter="mine" aria-pressed="false">My uploads</button>
       </div>
 
-      <div id="gallery-status" class="gallery-status">Loading recent photos…</div>
-      <section id="gallery-grid" class="gallery-grid" aria-live="polite"></section>
-      <button id="load-more" class="primary-btn" type="button" hidden>Load more photos</button>
+      <div class="guest-filter">
+        <label for="guest-filter">Show photos by:</label>
+        <select id="guest-filter" aria-controls="gallery-grid">
+          <option value="">All guests</option>
+        </select>
+      </div>
+
+      <p id="gallery-status" class="gallery-status" role="status">Loading recent photos…</p>
+      <section id="gallery-grid" class="gallery-grid" aria-label="Wedding photos" tabindex="0"></section>
+      <button id="load-more" class="filter-btn album-more" type="button" hidden>Load more photos</button>
+      <div class="action-buttons">
+        <a class="primary-btn" href="index.html">Back to uploader</a>
+      </div>
     </main>
 
     <script src="site-config.js" defer></script>

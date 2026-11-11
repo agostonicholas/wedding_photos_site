@@ -8,6 +8,7 @@
     "dev": "sh scripts/node.sh --watch server/index.js",
     "start": "sh scripts/node.sh server/supervisor.js",
     "stress": "sh scripts/node.sh scripts/stress.js",
+    "stress:guests": "sh scripts/node.sh scripts/stress-guests.js",
     "test": "sh scripts/node.sh --test test/*.test.js",
     "admin:code": "sh scripts/node.sh scripts/admin-code.js"
   },

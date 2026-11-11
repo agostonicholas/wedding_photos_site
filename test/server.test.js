@@ -166,6 +166,33 @@ test('mine identifies the signed browser session, not a shared name', async t =>
   first.cookies.set('wedding_device', signed.slice(0, -1) + (signed.endsWith('0') ? '1' : '0'));
   assert.equal((await (await first.request('/api/gallery?mine=true')).json()).total, 0);
 });
+test('album filters guests before pagination and includes all guest names and public slideshow data', async t => {
+  const { browser } = await setup(t);
+  const first = browser(), second = browser();
+  const guest = 'Sara & Nick + family';
+  assert.equal((await first.request('/upload', multipart(undefined, guest))).status, 200);
+  assert.equal((await first.request('/upload', multipart(undefined, 'Other guest'))).status, 200);
+  assert.equal((await second.request('/upload', multipart(undefined, guest))).status, 200);
+  const response = await first.request(`/api/gallery?limit=1&offset=1&guest=${encodeURIComponent(guest)}&include=album`);
+  const result = await response.json();
+  assert.equal(result.total, 2);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].uploaderName, guest);
+  assert.deepEqual(result.guests, ['Other guest', guest]);
+  assert.equal(result.recent.length, 3);
+  assert.ok(result.recent.every(item => !('deviceId' in item)));
+  const mine = await (await first.request(`/api/gallery?mine=true&guest=${encodeURIComponent(guest)}&include=album`)).json();
+  assert.equal(mine.total, 1);
+  assert.equal(mine.items[0].mine, true);
+  assert.deepEqual(mine.guests, result.guests);
+  const unknown = await (await first.request('/api/gallery?guest=Nobody&include=album')).json();
+  assert.equal(unknown.total, 0);
+  assert.deepEqual(unknown.items, []);
+  assert.deepEqual(unknown.guests, result.guests);
+  const ordinary = await (await first.request('/api/gallery')).json();
+  assert.equal(ordinary.guests, undefined);
+  assert.equal(ordinary.recent, undefined);
+});
 test('sorts all disk photos before limiting and supports old names and pagination', async t => {
   const { config, browser } = await setup(t);
   const directory = path.join(config.originalsDir, config.eventSlug, '2026-02-05');
@@ -239,6 +266,7 @@ test('blocks symlinks and private files in media routes', async t => {
 });
 test('validates deployment configuration and publishes actual upload limits', async t => {
   assert.equal(createConfig({ NODE_ENV: 'production' }).accessCode, '');
+  assert.equal(createConfig({}).maxFiles, 10);
   assert.throws(() => createConfig({ NODE_ENV: 'production', ACCESS_CODE: 'too-short' }), /ACCESS_CODE/);
   assert.throws(() => createConfig({ EVENT_SLUG: '../../bad' }), /EVENT_SLUG/);
   assert.throws(() => createConfig({ MAX_FILES: 'NaN' }), /MAX_FILES/);
@@ -249,11 +277,12 @@ test('validates deployment configuration and publishes actual upload limits', as
 });
 
 test('accepts the exact maximum file count, including a single-file configuration', async t => {
-  for (const max of [1, 5]) {
+  for (const max of [1, 5, 10]) {
     const { browser } = await setup(t, { MAX_FILES: String(max) });
     const response = await browser().request('/upload', multipart(Array.from({ length: max }, () => ({ buffer: PNG, filename: 'x.png', type: 'image/png' }))));
     assert.equal(response.status, 200, await response.clone().text());
     assert.equal((await response.json()).files.length, max);
+    assert.equal((await browser().request('/upload', multipart(Array.from({ length: max + 1 }, () => ({ buffer: PNG, filename: 'x.png', type: 'image/png' }))))).status, 400);
   }
 });
 test('signed browser identity survives an application restart', async t => {
