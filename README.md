@@ -4,15 +4,20 @@ A Node/Express server serves the uploader, live album, and original media togeth
 
 ## Run locally
 
-Use Node 22 or newer for a maintained runtime; the code also runs on the installed Node 18.19.
+Use Node 26 or newer. The exact project runtime is pinned in `.node-version`. This working copy has Node 26.13.0 installed in the ignored `.runtime/node` directory; `npm start`, `npm test`, and the other application scripts use that runtime automatically without changing system Node. If it is absent, the scripts use a suitable system Node.
+
+On Linux or macOS, the optional installer downloads the official Node archive and verifies its SHA-256 checksum. It requires Python 3.12 or newer. Install the project runtime before installing packages when the system Node is older:
 
 ```sh
-npm ci
+npm run setup:node
+PATH="$PWD/.runtime/node/bin:$PATH" npm ci
 cp .env.example .env
 npm start
 ```
 
 Open http://127.0.0.1:4000. No router forwarding, DuckDNS, or internet access is needed for the app itself. Google Fonts is optional; system fonts work offline. `npm run dev` restarts the server when source files change.
+
+If Node 26 or newer is already installed system-wide, skip `setup:node` and run `npm ci` normally. Package updates can be checked with `PATH="$PWD/.runtime/node/bin:$PATH" npm outdated` and `PATH="$PWD/.runtime/node/bin:$PATH" npm audit` when using the project runtime. The load-test script and server tests use Node's built-in `fetch`, `FormData`, and `Blob` APIs.
 
 Settings are read from `.env`; existing shell environment variables take precedence. An existing `.env` has been prepared in this working copy to keep using `/home/nick/Pictures/Wedding_Photos`. A fresh clone defaults to `server/uploads`.
 

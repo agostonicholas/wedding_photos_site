@@ -1,5 +1,5 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+require('dotenv').config({ quiet: true, path: path.resolve(__dirname, '..', '.env') });
 
 const MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/3gpp'];
 function integer(env, key, fallback, minimum = 1, maximum = Number.MAX_SAFE_INTEGER) {

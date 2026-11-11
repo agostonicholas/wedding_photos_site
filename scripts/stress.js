@@ -2,9 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
-const fetch = require('node-fetch');
-const FormData = require('form-data');
-require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+require('dotenv').config({ quiet: true, path: path.resolve(__dirname, '..', '.env') });
 const BASE_URL = (process.env.BASE_URL || 'http://127.0.0.1:4000').replace(/\/$/, '');
 function count(key, fallback, minimum = 1) {
   const value = Number(process.env[key] ?? fallback);
@@ -14,7 +12,7 @@ function count(key, fallback, minimum = 1) {
 const cookies = new Map();
 async function request(url, options = {}) {
   const response = await fetch(BASE_URL + url, { ...options, headers: { cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '), ...options.headers } });
-  for (const cookie of response.headers.raw()['set-cookie'] || []) {
+  for (const cookie of response.headers.getSetCookie()) {
     const value = cookie.split(';')[0];
     const separator = value.indexOf('=');
     cookies.set(value.slice(0, separator), value.slice(separator + 1));
@@ -55,9 +53,9 @@ async function main() {
         if (name === 'uploads') {
           const form = new FormData();
           const useVideo = video && Math.random() < ratio;
-          form.append('photos', useVideo ? video : image, { filename: useVideo ? 'stress.mp4' : imageName, contentType: useVideo ? 'video/mp4' : 'image/png' });
+          form.append('photos', new Blob([useVideo ? video : image], { type: useVideo ? 'video/mp4' : 'image/png' }), useVideo ? 'stress.mp4' : imageName);
           form.append('uploaderName', 'Stress Tester');
-          await request('/upload', { method: 'POST', headers: form.getHeaders(), body: form });
+          await request('/upload', { method: 'POST', headers: {}, body: form });
         } else await request(endpoint);
         samples.push(performance.now() - start);
       } catch (error) { failures++; console.error('[stress]', error.message); }

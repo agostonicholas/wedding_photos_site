@@ -3,8 +3,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const fetch = require('node-fetch');
-const FormData = require('form-data');
 const { createConfig } = require('../server/config');
 const { createApp } = require('../server');
 const { scanGallery } = require('../server/media');
@@ -28,7 +26,7 @@ async function setup(t, env = {}, dependencies) {
       cookies,
       async request(url, options = {}) {
         const response = await fetch(base + url, { redirect: 'manual', ...options, headers: { cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '), ...options.headers } });
-        for (const cookie of response.headers.raw()['set-cookie'] || []) {
+        for (const cookie of response.headers.getSetCookie()) {
           const part = cookie.split(';')[0];
           const at = part.indexOf('=');
           cookies.set(part.slice(0, at), part.slice(at + 1));
@@ -41,9 +39,9 @@ async function setup(t, env = {}, dependencies) {
 }
 function multipart(files = [{ buffer: PNG, filename: 'photo.png', type: 'image/png' }], name = 'Same Name') {
   const form = new FormData();
-  for (const file of files) form.append('photos', file.buffer, { filename: file.filename, contentType: file.type });
+  for (const file of files) form.append('photos', new Blob([file.buffer], { type: file.type }), file.filename);
   if (name !== null) form.append('uploaderName', name);
-  return { method: 'POST', body: form, headers: form.getHeaders() };
+  return { method: 'POST', body: form, headers: {} };
 }
 const postJSON = data => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
 async function filesUnder(directory) {
@@ -61,7 +59,7 @@ test('serves both pages and assets without exposing repository files', async t =
   for (const url of ['/', '/album', '/album.html', '/app.js', '/album.js', '/client.js', '/styles.css', '/auth.js']) assert.equal((await client.request(url)).status, 200, url);
   const login = await client.request('/login');
   assert.equal(login.status, 302);
-  assert.equal(new URL(login.headers.get('location')).pathname, '/');
+  assert.equal(new URL(login.headers.get('location'), 'http://localhost').pathname, '/');
   for (const url of ['/server/index.js', '/package.json', '/.env', '/.git/config', '/server/uploads/originals/a']) assert.equal((await client.request(url)).status, 404, url);
   const html = await (await client.request('/')).text();
   assert.ok(!html.includes('duckdns'));
@@ -72,7 +70,7 @@ test('accepts real signatures, chooses a safe extension, sets both cookies, and 
   const client = browser();
   const response = await client.request('/upload', multipart([{ buffer: PNG, filename: '../../evil.html', type: 'image/png' }], 'A'.repeat(90)));
   assert.equal(response.status, 200, await response.clone().text());
-  assert.equal(response.headers.raw()['set-cookie'].length, 2);
+  assert.equal(response.headers.getSetCookie().length, 2);
   const result = await response.json();
   const item = result.files[0];
   assert.match(item.fileName, /^\d+_[a-f0-9]{32}\.png$/);
@@ -82,7 +80,7 @@ test('accepts real signatures, chooses a safe extension, sets both cookies, and 
   const media = await client.request(item.servedPath);
   assert.equal(media.status, 200);
   assert.match(media.headers.get('content-type'), /^image\/png/);
-  assert.deepEqual(await media.buffer(), PNG);
+  assert.deepEqual(Buffer.from(await media.arrayBuffer()), PNG);
   assert.equal((await client.request(item.servedPath + '.meta.json')).status, 404);
   const gallery = await (await client.request('/api/gallery')).json();
   assert.equal(gallery.items.length, 1);
@@ -308,7 +306,7 @@ test('wedding guests can open pages, upload, and view photos without a code in p
   for (const route of ['/', '/album', '/api/gallery']) assert.equal((await client.request(route)).status, 200);
   const login = await client.request('/login');
   assert.equal(login.status, 302);
-  assert.equal(new URL(login.headers.get('location')).pathname, '/');
+  assert.equal(new URL(login.headers.get('location'), 'http://localhost').pathname, '/');
   const response = await client.request('/upload', multipart());
   assert.equal(response.status, 200);
   const uploaded = (await response.json()).files[0];

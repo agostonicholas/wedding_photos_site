@@ -4,28 +4,27 @@
   "description": "Wedding photo and video collection with a live shared album",
   "main": "server/index.js",
   "scripts": {
-    "dev": "node --watch server/index.js",
-    "start": "node server/index.js",
-    "stress": "node scripts/stress.js",
-    "test": "node --test test/*.test.js"
+    "setup:node": "python3 scripts/setup-node.py",
+    "dev": "sh scripts/node.sh --watch server/index.js",
+    "start": "sh scripts/node.sh server/index.js",
+    "stress": "sh scripts/node.sh scripts/stress.js",
+    "test": "sh scripts/node.sh --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
-    "express": "^5.2.1",
-    "file-type": "^19.6.0",
-    "form-data": "^4.0.5",
-    "morgan": "^1.10.1",
-    "multer": "^2.0.2",
-    "node-fetch": "^2.7.0"
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "file-type": "^22.3.0",
+    "morgan": "^1.12.1",
+    "multer": "^2.5.0"
   },
   "engines": {
-    "node": ">=18.19"
+    "node": ">=26.0.0"
   },
   "devDependencies": {
-    "jsdom": "^26.1.0"
+    "jsdom": "^31.0.0"
   }
 }
