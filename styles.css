@@ -26,6 +26,52 @@ body {
   color: var(--text);
 }
 
+html.intro-active,
+.intro-active .upload-page {
+  background: #f6f0f7;
+}
+
+.intro-active .upload-page {
+  overflow: hidden;
+}
+
+.brand-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background-color: #e6d5ef;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 253, 246, 0.72) 0%, rgba(255, 253, 246, 0.25) 35%, transparent 65%),
+    linear-gradient(135deg, #bdd6f7 0%, #d5c5f0 32%, #f2c8dd 68%, #f8ddc8 100%);
+  opacity: 1;
+  transition: opacity 650ms ease;
+}
+
+.brand-intro img {
+  display: block;
+  width: min(84vw, 420px);
+  height: min(80svh, 740px);
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.brand-intro.logo-ready img {
+  opacity: 1;
+}
+
+.intro-leaving .brand-intro {
+  opacity: 0;
+}
+
+.intro-active:not(.intro-leaving) :is(.upload-card, .welcome-overlay, .upload-splash, .slideshow, .slideshow-overlay) {
+  visibility: hidden;
+}
+
 .slideshow,
 .slideshow-overlay {
   position: fixed;

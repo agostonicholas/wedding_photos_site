@@ -35,6 +35,8 @@ A signed device cookie identifies uploads from this browser. The server persists
 
 The album and background slideshow refresh every 10 seconds while visible; the disk index is cached for up to 5 seconds. The album supports loading additional pages. Photos are sorted by saved upload time, falling back to filesystem modification time for older files.
 
+`logo.png` is the favicon. Visitors without a saved name first see `logo_large.png` on a pastel gradient, held for 1.6 seconds after the image loads before fading into the name prompt. Returning guests with a saved name skip the intro and its image download. There is no separate "intro seen" flag: clearing the saved name makes it appear again on the next visit. Image failures and a load timeout keep the name prompt accessible, and reduced-motion preferences disable the fade.
+
 Photos and videos retain their original bytes. Only photos appear in the album. Supported types are JPEG, PNG, HEIC/HEIF, WebP, MP4, QuickTime, and 3GPP. The server checks binary file signatures and derives extensions from detected content. Signature detection is not full decoding or malware scanning. There is no image conversion or thumbnail pipeline; some HEIC/HEIF originals may not preview in a particular browser. Click an album image to open its original.
 
 ## Limits and recovery
@@ -61,7 +63,7 @@ Keep the invitation link on `https://agostonicholas.github.io`. Load `site-confi
 
 Set `CORS_ORIGINS=https://agostonicholas.github.io` in the server's `.env` and restart it. This origin is already configured in this working copy; no repository path belongs in the CORS setting. The server permits that frontend and exposes a signed anonymous device token, while rejecting other origins. Guests still need no access code. If temporary access protection is enabled, the frontend directs guests to the backend login and uploader.
 
-GitHub Pages serves static files and cannot run the Express API. Deploy the updated HTML, `site-config.js`, `client.js`, `app.js`, and `album.js` to GitHub Pages; copying only the server changes will not update the invitation site. No GitHub deployment has been performed automatically.
+GitHub Pages serves static files and cannot run the Express API. Deploy the updated HTML, CSS, `site-config.js`, `client.js`, `app.js`, `album.js`, `intro.js`, `logo.png`, and `logo_large.png` to GitHub Pages; copying only the server changes will not update the invitation site. No GitHub deployment has been performed automatically.
 
 The backend must be reachable using HTTPS: [browsers block HTTP API requests from an HTTPS page](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Mixed_content). Update `nickserverphotodump` in the [DuckDNS dashboard](https://www.duckdns.org/) to the current public IPv4, and forward TCP 80 and 443 to the Caddy server at `192.168.1.32`. Forwarding only port 4000 does not supply HTTPS for the invitation frontend. The existing Caddy configuration proxies that hostname to localhost:4000.
 

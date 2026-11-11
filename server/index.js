@@ -121,7 +121,7 @@ async function createApp(config = createConfig(), dependencies = {}) {
     res.cookie(ACCESS_COOKIE, encodeToken(`${accessScope}:${Date.now() + config.sessionTTL}`), cookieOptions);
     res.json({ ok: true });
   });
-  for (const [route, file] of [['/login', 'login.html'], ['/auth.js', 'auth.js'], ['/styles.css', 'styles.css']]) app.get(route, (_req, res) => {
+  for (const [route, file] of [['/login', 'login.html'], ['/auth.js', 'auth.js'], ['/styles.css', 'styles.css'], ['/logo.png', 'logo.png']]) app.get(route, (_req, res) => {
     if (route === '/login' && !config.accessCode) return res.redirect('/');
     res.sendFile(path.join(config.rootDir, file));
   });
@@ -275,7 +275,7 @@ async function createApp(config = createConfig(), dependencies = {}) {
     } catch (error) { if (error.code === 'ENOENT') return next(); next(error); }
   });
   // List public assets explicitly; never expose server code, uploads, or .env.
-  for (const [route, file] of [['/', 'index.html'], ['/index.html', 'index.html'], ['/album', 'album.html'], ['/album.html', 'album.html'], ['/app.js', 'app.js'], ['/album.js', 'album.js'], ['/client.js', 'client.js'], ['/site-config.js', 'site-config.js']]) {
+  for (const [route, file] of [['/', 'index.html'], ['/index.html', 'index.html'], ['/album', 'album.html'], ['/album.html', 'album.html'], ['/app.js', 'app.js'], ['/album.js', 'album.js'], ['/client.js', 'client.js'], ['/site-config.js', 'site-config.js'], ['/intro.js', 'intro.js'], ['/logo_large.png', 'logo_large.png']]) {
     app.get(route, (_req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(path.join(config.rootDir, file)); });
   }
   app.use((_req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));

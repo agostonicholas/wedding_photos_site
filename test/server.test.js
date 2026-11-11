@@ -56,13 +56,20 @@ async function filesUnder(directory) {
 test('serves both pages and assets without exposing repository files', async t => {
   const { browser } = await setup(t);
   const client = browser();
-  for (const url of ['/', '/album', '/album.html', '/app.js', '/album.js', '/client.js', '/site-config.js', '/styles.css', '/auth.js']) assert.equal((await client.request(url)).status, 200, url);
+  for (const url of ['/', '/album', '/album.html', '/app.js', '/album.js', '/client.js', '/site-config.js', '/styles.css', '/auth.js', '/intro.js']) assert.equal((await client.request(url)).status, 200, url);
+  for (const file of ['logo.png', 'logo_large.png']) {
+    const response = await client.request('/' + file);
+    assert.equal(response.status, 200, file);
+    assert.match(response.headers.get('content-type'), /^image\/png/);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), await fs.readFile(path.join(__dirname, '..', file)));
+  }
   const login = await client.request('/login');
   assert.equal(login.status, 302);
   assert.equal(new URL(login.headers.get('location'), 'http://localhost').pathname, '/');
   for (const url of ['/server/index.js', '/package.json', '/.env', '/.git/config', '/server/uploads/originals/a']) assert.equal((await client.request(url)).status, 404, url);
   const html = await (await client.request('/')).text();
   assert.ok(!html.includes('duckdns'));
+  assert.match(html, /rel="icon"[^>]+href="logo.png"/);
   assert.equal((await client.request('/health')).status, 200);
 });
 test('accepts real signatures, chooses a safe extension, sets both cookies, and hides metadata', async t => {
@@ -195,6 +202,7 @@ test('access code protects APIs, pages, uploads, and media', async t => {
   const { browser } = await setup(t, { ACCESS_CODE: 'a-long-wedding-code' });
   const client = browser();
   assert.equal((await client.request('/')).status, 302);
+  assert.equal((await client.request('/logo.png')).status, 200);
   for (const route of ['/api/gallery', '/api/recent', '/media/0/main-event/2026-02-05/x.png']) assert.equal((await client.request(route)).status, 401);
   assert.equal((await client.request('/upload', multipart())).status, 401);
   assert.equal((await client.request('/session/access', postJSON({ code: 'incorrect' }))).status, 401);

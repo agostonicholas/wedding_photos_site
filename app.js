@@ -16,7 +16,7 @@ const welcomeOverlay = document.getElementById('welcome-overlay');
 const welcomeInput = document.getElementById('guest-name-input');
 const welcomeError = document.getElementById('welcome-error');
 const welcomeCancel = document.getElementById('welcome-cancel');
-let guestName = storage.get('weddingUploaderName');
+let guestName = storage.get('weddingUploaderName').trim();
 let config;
 let uploading = false;
 let refreshing = false;
@@ -117,9 +117,13 @@ function updateSelection() {
 function refreshName() {
   document.getElementById('hero-eyebrow').textContent = guestName || 'Guest';
   welcomeCancel.hidden = !guestName;
-  welcomeOverlay.hidden = Boolean(guestName);
-  if (!guestName) welcomeInput.focus();
+  const introActive = document.documentElement.classList.contains('intro-active');
+  const introLeaving = document.documentElement.classList.contains('intro-leaving');
+  welcomeOverlay.hidden = Boolean(guestName) || (introActive && !introLeaving) || serviceState !== 'online';
+  if (!welcomeOverlay.hidden && !introActive) welcomeInput.focus();
 }
+document.addEventListener('wedding:intro-reveal', refreshName);
+document.addEventListener('wedding:intro-finished', refreshName);
 function showSlide() {
   Array.from(slideshowEl.children).forEach((image, index) => image.classList.toggle('active', index === slideIndex));
 }

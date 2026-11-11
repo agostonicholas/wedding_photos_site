@@ -28,6 +28,87 @@ function page(t, name, handlers, options = {}) {
 }
 const config = { ok: true, maxFiles: 2, maxTotalBytes: 1000, allowedTypes: ['image/png'] };
 
+function introTimers(window) {
+  const pending = new Map();
+  let next = 0;
+  window.setTimeout = (callback, duration) => { pending.set(++next, { callback, duration }); return next; };
+  window.clearTimeout = id => pending.delete(id);
+  return duration => {
+    const timer = [...pending].find(([, value]) => value.duration === duration);
+    assert.ok(timer, `Expected intro timer for ${duration}ms`);
+    pending.delete(timer[0]);
+    timer[1].callback();
+  };
+}
+test('first visit shows the logo before revealing and focusing the name prompt', async t => {
+  const view = page(t, 'index.html', async url => url === '/api/config' ? config : { ok: true, items: [] });
+  const { window } = view;
+  const document = window.document;
+  const advance = introTimers(window);
+  view.run('intro.js'); view.run('client.js'); view.run('app.js');
+  await waitFor(() => !document.getElementById('brand-intro').hidden);
+  const overlay = document.getElementById('welcome-overlay');
+  const logo = document.getElementById('intro-logo');
+  assert.equal(document.documentElement.classList.contains('intro-active'), true);
+  assert.equal(overlay.hidden, true);
+  assert.equal(document.getElementById('upload-card').inert, true);
+  assert.equal(logo.getAttribute('src'), 'logo_large.png');
+  logo.dispatchEvent(new window.Event('load'));
+  assert.equal(document.getElementById('brand-intro').classList.contains('logo-ready'), true);
+  advance(1600);
+  assert.equal(document.documentElement.classList.contains('intro-leaving'), true);
+  assert.equal(overlay.hidden, false);
+  assert.notEqual(document.activeElement, document.getElementById('guest-name-input'));
+  advance(650);
+  assert.equal(document.getElementById('brand-intro').hidden, true);
+  assert.equal(document.documentElement.classList.contains('intro-active'), false);
+  assert.equal(document.getElementById('upload-card').inert, false);
+  assert.equal(document.activeElement, document.getElementById('guest-name-input'));
+  assert.equal(window.localStorage.getItem('weddingUploaderName'), null);
+});
+test('a saved name skips the intro and large image; removing the name restores it on the next visit', async t => {
+  for (const savedName of ['Nick', '', '   ']) {
+    const view = page(t, 'index.html', async url => url === '/api/config' ? config : { ok: true, items: [] });
+    const { window } = view;
+    window.localStorage.setItem('weddingUploaderName', savedName);
+    const advance = introTimers(window);
+    view.run('intro.js'); view.run('client.js'); view.run('app.js');
+    await waitFor(() => !window.document.getElementById('photos').disabled);
+    const document = window.document;
+    if (savedName.trim()) {
+      assert.equal(document.getElementById('brand-intro').hidden, true);
+      assert.equal(document.documentElement.classList.contains('intro-active'), false);
+      assert.equal(document.getElementById('intro-logo').hasAttribute('src'), false);
+      assert.equal(document.querySelector('link[rel="preload"]'), null);
+      document.getElementById('hero-eyebrow').click();
+      assert.equal(document.getElementById('welcome-overlay').hidden, false);
+      assert.equal(document.documentElement.classList.contains('intro-active'), false);
+    } else {
+      assert.equal(document.getElementById('brand-intro').hidden, false);
+      advance(4500); advance(650);
+      assert.equal(document.getElementById('welcome-overlay').hidden, false);
+    }
+  }
+});
+test('missing or stalled intro images never prevent name entry, including with reduced motion', async t => {
+  for (const failure of ['error', 'timeout', 'reduced-motion']) {
+    const view = page(t, 'index.html', async url => url === '/api/config' ? config : { ok: true, items: [] });
+    const { window } = view;
+    const document = window.document;
+    window.matchMedia = () => ({ matches: failure === 'reduced-motion' });
+    const advance = introTimers(window);
+    view.run('intro.js'); view.run('client.js'); view.run('app.js');
+    await waitFor(() => !document.getElementById('brand-intro').hidden);
+    if (failure === 'error') document.getElementById('intro-logo').dispatchEvent(new window.Event('error'));
+    else if (failure === 'timeout') advance(4500);
+    else { document.getElementById('intro-logo').dispatchEvent(new window.Event('load')); advance(1600); }
+    if (failure !== 'reduced-motion') advance(650);
+    assert.equal(document.getElementById('brand-intro').hidden, true);
+    assert.equal(document.getElementById('welcome-overlay').inert, false);
+    assert.equal(document.activeElement, document.getElementById('guest-name-input'));
+  }
+});
+
 test('uploader loads server limits and renders untrusted filenames as text', async t => {
   const view = page(t, 'index.html', async url => url === '/api/config' ? config : { ok: true, items: [] });
   view.window.localStorage.setItem('weddingUploaderName', 'Guest');
