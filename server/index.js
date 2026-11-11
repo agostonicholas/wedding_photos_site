@@ -10,6 +10,8 @@ const morgan = require('morgan');
 const cors = require('cors');
 const { createConfig } = require('./config');
 const { mediaType, detectFile, scanGallery, directoryBytes } = require('./media');
+const { installAdmin, createUploadSwitch, isAdminName } = require('./admin');
+const { MESSAGES, service } = require('./service-status');
 const DEVICE_COOKIE = 'wedding_device';
 const NAME_COOKIE = 'wedding_guest_name';
 const ACCESS_COOKIE = 'wedding_access';
@@ -36,6 +38,10 @@ async function createApp(config = createConfig(), dependencies = {}) {
     secret = await fsp.readFile(secretPath, 'utf8');
   }
   if (secret.length < 32) throw new Error('SESSION_SECRET must contain at least 32 characters.');
+  const uploadSwitch = await createUploadSwitch(config.uploadsRoot);
+  const activeUploads = new Set();
+  let lifecycleState = null;
+  const publicService = () => service(lifecycleState || (uploadSwitch.paused ? 'paused' : 'online'));
   const sign = value => createHmac('sha256', secret).update(value).digest('hex');
   const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
   const encodeToken = value => `${value}.${sign(value)}`;
@@ -98,8 +104,18 @@ async function createApp(config = createConfig(), dependencies = {}) {
     });
     next();
   };
+  installAdmin(app, config, {
+    status: () => ({ uploadsPaused: uploadSwitch.paused, activeUploads: activeUploads.size, storedBytes,
+      maxStorageBytes: config.maxStorageBytes, uptimeSeconds: Math.floor(process.uptime()),
+      lifecycleSupported: Boolean(dependencies.requestLifecycle) }),
+    pause: value => uploadSwitch.set(value),
+    requestLifecycle: dependencies.requestLifecycle ? action => {
+      lifecycleState = action === 'restart' ? 'restarting' : 'stopped';
+      dependencies.requestLifecycle(action);
+    } : undefined,
+  });
   app.get('/health', (_req, res) => res.json({ ok: true }));
-  app.get('/api/config', (_req, res) => res.json({ ok: true, maxFiles: config.maxFiles, maxTotalBytes: config.maxTotalBytes, allowedTypes: config.allowedTypes, accessRequired: Boolean(config.accessCode) }));
+  app.get('/api/config', (_req, res) => res.json({ ok: true, maxFiles: config.maxFiles, maxTotalBytes: config.maxTotalBytes, allowedTypes: config.allowedTypes, accessRequired: Boolean(config.accessCode), uploadsPaused: uploadSwitch.paused, adminEntryEnabled: Boolean(config.adminCodeHash), service: publicService() }));
   app.post('/session/access', rateLimit('login', config.loginRateLimit, 15 * 60 * 1000), (req, res) => {
     if (config.accessCode && !equal(sign(String(req.body?.code || '')), sign(config.accessCode))) return res.status(401).json({ ok: false, error: 'That wedding access code is incorrect.' });
     res.cookie(ACCESS_COOKIE, encodeToken(`${accessScope}:${Date.now() + config.sessionTTL}`), cookieOptions);
@@ -174,7 +190,9 @@ async function createApp(config = createConfig(), dependencies = {}) {
   };
   let commitQueue = Promise.resolve();
   app.post('/upload', rateLimit('upload', config.uploadRateLimit, 10 * 60 * 1000), (req, res, next) => {
-    const release = () => { req.uploadClosed = true; incomingBytes -= reservations.get(req) || 0; reservations.delete(req); };
+    if (uploadSwitch.paused) return res.status(503).json({ ok: false, error: MESSAGES.paused, service: publicService() });
+    activeUploads.add(req);
+    const release = () => { req.uploadClosed = true; incomingBytes -= reservations.get(req) || 0; reservations.delete(req); activeUploads.delete(req); };
     res.once('finish', release);
     res.once('close', release);
     upload(req, res, error => error ? next(error) : next());
@@ -196,6 +214,7 @@ async function createApp(config = createConfig(), dependencies = {}) {
       if (storedBytes + totalBytes > config.maxStorageBytes) throw httpError(507, 'Photo storage is full. Please contact the hosts.');
       if (req.uploadClosed) throw httpError(400, 'Upload was interrupted.');
       const name = normalizeName(req.body?.uploaderName) || req.guestName || 'Guest';
+      if (isAdminName(name)) throw httpError(400, 'Use a guest name to label uploaded photos.');
       const date = new Date().toISOString().slice(0, 10);
       const directory = path.join(config.originalsDir, config.eventSlug, date);
       await fsp.mkdir(directory, { recursive: true });
@@ -230,7 +249,7 @@ async function createApp(config = createConfig(), dependencies = {}) {
   };
   app.get('/api/recent', async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, items: (await gallery()).slice(0, 20).map(item => publicItem(item, req)) });
+    res.json({ ok: true, items: (await gallery()).slice(0, 20).map(item => publicItem(item, req)), service: publicService() });
   });
   app.get('/api/gallery', async (req, res) => {
     const raw = req.query.limit === undefined ? 300 : Number(req.query.limit);
@@ -270,8 +289,30 @@ async function createApp(config = createConfig(), dependencies = {}) {
 }
 if (require.main === module) {
   const config = createConfig();
-  createApp(config).then(app => {
+  const requestLifecycle = typeof process.send === 'function'
+    ? action => process.send({ type: 'admin-control', action }) : undefined;
+  createApp(config, { requestLifecycle }).then(app => {
     const server = app.listen(config.port, config.host);
+    let draining = false;
+    const shutdown = () => {
+      if (draining) return;
+      draining = true;
+      console.log('Finishing active requests before stopping…');
+      const deadline = setTimeout(() => server.closeAllConnections(), 10 * 60 * 1000);
+      deadline.unref();
+      server.close(() => {
+        clearTimeout(deadline);
+        if (process.connected) process.disconnect();
+        process.exitCode = process.exitCode || 0;
+      });
+    };
+    for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, shutdown);
+    if (requestLifecycle) {
+      process.on('message', message => {
+        if (message?.type === 'graceful-shutdown') shutdown();
+      });
+      process.on('disconnect', shutdown);
+    }
     server.once('listening', () => {
       const port = server.address().port;
       const allInterfaces = config.host === '0.0.0.0' || config.host === '::';
@@ -284,6 +325,7 @@ if (require.main === module) {
         }
       }
       console.log(`Photo storage: ${config.uploadsRoot}`);
+      if (process.connected) process.send({ type: 'ready' });
     });
     server.on('error', error => {
       if (error.code === 'EADDRINUSE') {
@@ -292,7 +334,12 @@ if (require.main === module) {
         console.error(`Unable to start server: ${error.message}`);
       }
       process.exitCode = 1;
+      if (process.connected) process.disconnect();
     });
-  }).catch(error => { console.error(error.message); process.exitCode = 1; });
+  }).catch(error => {
+    console.error(error.message);
+    process.exitCode = 1;
+    if (process.connected) process.disconnect();
+  });
 }
 module.exports = { createApp, parseCookies };

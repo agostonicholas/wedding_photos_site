@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Wedding Photo Drop · Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/admin.css" />
+    <script src="/admin.js" defer></script>
+  </head>
+  <body class="admin-body">
+    <main class="admin-wrapper">
+      <header class="admin-header">
+        <div><p class="eyebrow">Owner controls</p><h1>Photo server</h1></div>
+        <a href="/">Back to photos</a>
+      </header>
+      <section id="admin-login" hidden>
+        <p>Enter your private admin code.</p>
+        <form id="admin-login-form">
+          <label for="admin-code">Admin code</label>
+          <input id="admin-code" type="password" autocomplete="current-password" required maxlength="60" />
+          <button class="primary-btn" type="submit">Sign in</button>
+          <p id="admin-login-error" class="welcome-error" role="alert"></p>
+        </form>
+      </section>
+      <section id="admin-panel" hidden>
+        <dl class="admin-stats">
+          <div><dt>Uploads</dt><dd id="admin-upload-state">—</dd></div>
+          <div><dt>Active uploads</dt><dd id="admin-active-uploads">—</dd></div>
+          <div><dt>Photo storage</dt><dd id="admin-storage">—</dd></div>
+        </dl>
+        <div class="admin-actions">
+          <button class="primary-btn" type="button" id="admin-pause">Pause new uploads</button>
+          <button class="admin-secondary" type="button" id="admin-restart">Restart server</button>
+          <button class="admin-danger" type="button" id="admin-stop">Stop server completely</button>
+        </div>
+        <p class="admin-help">Pausing keeps the album online. Restart and stop finish active requests first; requests still running after 10 minutes are disconnected.</p>
+        <p class="admin-help">A full stop takes the site offline. To bring it back, run <code>npm start</code> on the computer.</p>
+        <button class="admin-link" type="button" id="admin-logout">Sign out</button>
+      </section>
+      <p id="admin-notice" class="admin-notice" role="status" aria-live="polite">Checking admin session…</p>
+    </main>
+    <dialog id="admin-confirm-dialog" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description">
+      <form id="admin-confirm-form">
+        <h2 id="admin-confirm-title">Confirm server action</h2>
+        <p id="admin-confirm-description"></p>
+        <label for="admin-confirm-input">Type <strong>confirm</strong> to continue</label>
+        <input id="admin-confirm-input" autocomplete="off" spellcheck="false" />
+        <div class="admin-confirm-buttons">
+          <button class="admin-secondary" type="button" id="admin-confirm-cancel">Cancel</button>
+          <button class="admin-danger" type="submit" id="admin-confirm-submit" disabled>Confirm</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

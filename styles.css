@@ -75,6 +75,152 @@ body {
   text-align: center;
 }
 
+.upload-page {
+  isolation: isolate;
+}
+
+.upload-page .slideshow img {
+  filter: blur(2px) saturate(1.05);
+}
+
+.upload-page .slideshow-overlay {
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.12), rgba(18, 3, 11, 0.35));
+}
+
+.upload-page .trust-note {
+  margin: 0.85rem 0 0;
+}
+
+.upload-page .picker {
+  border-color: rgba(255, 92, 141, 0.55);
+  background: rgba(255, 213, 228, 0.2);
+}
+
+.upload-page .action-buttons a.primary-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(44, 15, 28, 0.2);
+  box-shadow: none;
+}
+
+.upload-help {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.upload-help summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.upload-help .limit-note {
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.service-message {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+#selected-files:has(.file-list:empty) {
+  display: none;
+}
+
+#selected-files progress {
+  display: none;
+}
+
+.upload-splash {
+  width: min(420px, 100%);
+  max-height: calc(100svh - 3rem);
+  overflow-y: auto;
+  padding: 0.75rem;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
+.upload-progress-text {
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.upload-splash .file-list {
+  gap: 1rem;
+  text-align: left;
+}
+
+.upload-splash .file-row {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 0.35rem;
+}
+
+.file-row strong {
+  overflow-wrap: anywhere;
+}
+
+.upload-splash .file-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.upload-splash .file-meta {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+}
+
+.upload-splash progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.upload-splash progress::-webkit-progress-bar {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+}
+
+.upload-splash progress::-webkit-progress-value {
+  background: var(--pink);
+  border-radius: 999px;
+}
+
+.upload-splash progress::-moz-progress-bar {
+  background: var(--pink);
+  border-radius: 999px;
+}
+
+.upload-warning {
+  max-width: 30ch;
+  margin: 1.75rem auto 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.upload-page.is-uploading {
+  align-items: center;
+}
+
+.upload-page.is-uploading .slideshow-overlay {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.38));
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.3rem;
@@ -82,6 +228,18 @@ body {
   color: var(--muted);
   margin: 0 0 0.75rem;
 }
+
+.guest-name-button {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.guest-name-button:hover { text-decoration: underline; }
+.name-cancel { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0.5rem; font: inherit; }
 
 h1 {
   margin: 0 0 0.75rem;
@@ -252,13 +410,115 @@ form {
   margin-top: 1.75rem;
 }
 
-@media (max-width: 480px) {
-  .upload-card {
-    padding: 1.75rem;
+@media (max-width: 600px) {
+  .upload-page {
+    align-items: center;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
   }
 
-  .picker {
-    padding: 1rem;
+  .upload-page .upload-card {
+    width: min(360px, 100%);
+    padding: 1rem 1.15rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(10px);
+  }
+
+  .upload-page .slideshow img {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: saturate(1.05);
+    transform: none;
+  }
+
+  .upload-page .slideshow-overlay {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(18, 3, 11, 0.25));
+  }
+
+  .upload-page .eyebrow {
+    margin-bottom: 0.2rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.2rem;
+  }
+
+  .upload-page h1 {
+    margin-bottom: 0.15rem;
+  }
+
+  .upload-page .tagline {
+    margin-bottom: 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .upload-page #upload-form {
+    gap: 0.45rem;
+  }
+
+  .upload-page .picker {
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    gap: 0.15rem;
+  }
+
+  .upload-page .picker span:first-child {
+    font-size: 0.95rem;
+  }
+
+  .upload-page .picker-hint,
+  .upload-page .file-count,
+  .upload-page .status {
+    font-size: 0.75rem;
+  }
+
+  #selected-files .file-list {
+    max-height: 100px;
+    overflow-y: auto;
+    gap: 0.35rem;
+  }
+
+  #selected-files .file-row {
+    padding: 0.4rem 0.6rem;
+    gap: 0.15rem;
+  }
+
+  #selected-files .file-row strong {
+    font-size: 0.8rem;
+  }
+
+  #selected-files .file-meta {
+    font-size: 0.7rem;
+  }
+
+  .upload-page .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 0.2rem;
+    gap: 0.5rem;
+  }
+
+  .upload-page .action-buttons:has(#upload-btn[hidden]) {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-page .primary-btn {
+    min-height: 44px;
+    padding: 0.65rem 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .upload-page .trust-note {
+    margin-top: 0.65rem;
+    font-size: 0.7rem;
+  }
+
+  .upload-page .upload-help {
+    font-size: 0.7rem;
+  }
+
+  .upload-splash {
+    max-height: calc(100svh - 2rem);
+    padding: 0.5rem;
   }
 }
 .primary-btn:focus-visible {

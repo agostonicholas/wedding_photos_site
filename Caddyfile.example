@@ -1,4 +1,31 @@
-# Install Caddy separately and use this as its configuration after forwarding is ready.
+# The status directory contains public messages only, written by the supervisor.
+# Adjust the project path below if you install the site in another directory.
 nickserverphotodump.duckdns.org {
     reverse_proxy 127.0.0.1:4000
+
+    handle_errors {
+        header Cache-Control "no-store"
+        header Access-Control-Allow-Origin "https://agostonicholas.github.io"
+        header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, X-Wedding-Device"
+        @preflight method OPTIONS
+        handle @preflight {
+            respond "" 204
+        }
+        @api path /api/* /upload /session/* /health
+        handle @api {
+            root * /home/nick/Desktop/Projects/wedding_photos_site/.runtime/public-status
+            rewrite * /status.json
+            file_server {
+                status 503
+            }
+        }
+        handle {
+            root * /home/nick/Desktop/Projects/wedding_photos_site/.runtime/public-status
+            rewrite * /status.html
+            file_server {
+                status 503
+            }
+        }
+    }
 }

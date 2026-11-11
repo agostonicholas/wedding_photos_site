@@ -25,13 +25,14 @@
     if (issuedToken) { deviceToken = issuedToken; storage.set(deviceKey, deviceToken); }
     if (response.status === 401) window.location.assign(loginUrl);
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.ok) throw new Error(payload.error || 'The server is unavailable. Please try again.');
+    if (!response.ok || !payload.ok) throw Object.assign(new Error(payload.error || 'The server is unavailable. Please try again.'), { service: payload.service });
     return payload;
   }
   const config = request('/api/config');
   async function json(url, options) {
     // Bootstrap identity before concurrent remote calls can issue different IDs.
-    if (crossOrigin) await config;
+    // Keep polling possible after an outage during the initial configuration load.
+    if (crossOrigin && url !== '/api/config') await config.catch(() => {});
     return request(url, options);
   }
   window.Wedding = { json, storage, config, resolveUrl, loginUrl, getDeviceToken: () => crossOrigin ? deviceToken : '' };

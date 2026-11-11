@@ -6,9 +6,10 @@
   "scripts": {
     "setup:node": "python3 scripts/setup-node.py",
     "dev": "sh scripts/node.sh --watch server/index.js",
-    "start": "sh scripts/node.sh server/index.js",
+    "start": "sh scripts/node.sh server/supervisor.js",
     "stress": "sh scripts/node.sh scripts/stress.js",
-    "test": "sh scripts/node.sh --test test/*.test.js"
+    "test": "sh scripts/node.sh --test test/*.test.js",
+    "admin:code": "sh scripts/node.sh scripts/admin-code.js"
   },
   "keywords": [],
   "author": "",

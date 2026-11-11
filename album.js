@@ -53,7 +53,7 @@ async function loadGallery() {
     renderGallery(items);
     statusEl.textContent = items.length ? `${items.length} of ${total} photo${total === 1 ? '' : 's'}${mine ? ' uploaded from this browser' : ' shared'}` : (mine ? 'No photos uploaded from this browser yet.' : 'No uploads yet. Be the first to share!');
     moreButton.hidden = items.length >= total;
-  } catch (error) { if (version === requestVersion) statusEl.textContent = `${error.message} The album will retry automatically.`; }
+  } catch (error) { if (version === requestVersion) statusEl.textContent = error.service?.message || `${error.message} The album will retry automatically.`; }
   finally { loading = false; if (version !== requestVersion) loadGallery(); }
 }
 filterButtons.forEach(button => button.addEventListener('click', () => {

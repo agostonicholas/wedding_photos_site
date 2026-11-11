@@ -1,0 +1,24 @@
+.admin-body { align-items: flex-start; background: #f6edf1; padding: clamp(1rem, 4vw, 3rem); }
+.admin-wrapper { width: min(640px, 100%); padding: clamp(1.25rem, 4vw, 2rem); background: #fff; border-radius: 24px; box-shadow: 0 20px 60px #2c0f1c12; }
+.admin-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.admin-header h1 { font-size: 2rem; margin: 0; }
+.admin-header .eyebrow { font-size: 0.65rem; margin-bottom: 0.4rem; }
+.admin-header a { color: var(--text); font-size: 0.85rem; }
+.admin-body input { width: 100%; padding: 0.8rem; border: 1px solid #d6c5cd; border-radius: 12px; font: inherit; }
+.admin-stats { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin: 0 0 1.5rem; }
+.admin-stats div { padding: 1rem; background: #faf3f6; border-radius: 14px; }
+.admin-stats dt { color: var(--muted); font-size: 0.75rem; margin-bottom: 0.5rem; }
+.admin-stats dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.admin-actions { display: grid; gap: 0.8rem; }
+.admin-secondary, .admin-danger { font: inherit; font-weight: 600; cursor: pointer; min-height: 44px; padding: 0.85rem 1rem; border-radius: 999px; }
+.admin-secondary { background: #fff; border: 1px solid #cdbbc3; color: var(--text); }
+.admin-danger { background: #a92137; border: 1px solid #a92137; color: #fff; }
+.admin-body button:disabled { cursor: default; opacity: 0.45; }
+.admin-help { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+.admin-link { color: var(--text); background: none; border: 0; padding: 0.6rem 0; text-decoration: underline; cursor: pointer; font: inherit; }
+.admin-notice { line-height: 1.6; margin-bottom: 0; }
+#admin-confirm-dialog { width: min(440px, calc(100vw - 2rem)); padding: 1.5rem; border: 0; border-radius: 20px; color: var(--text); }
+#admin-confirm-dialog::backdrop { background: #12030ba6; }
+#admin-confirm-dialog h2 { margin: 0; }
+#admin-confirm-dialog p { line-height: 1.6; }
+.admin-confirm-buttons { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }

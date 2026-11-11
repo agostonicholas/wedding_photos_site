@@ -65,6 +65,46 @@ GitHub Pages serves static files and cannot run the Express API. Deploy the upda
 
 The backend must be reachable using HTTPS: [browsers block HTTP API requests from an HTTPS page](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Mixed_content). Update `nickserverphotodump` in the [DuckDNS dashboard](https://www.duckdns.org/) to the current public IPv4, and forward TCP 80 and 443 to the Caddy server at `192.168.1.32`. Forwarding only port 4000 does not supply HTTPS for the invitation frontend. The existing Caddy configuration proxies that hostname to localhost:4000.
 
+## Private owner controls
+
+Run `npm run admin:code` to generate a private owner code. Save the displayed code privately; only its SHA-256 digest is stored in the ignored `.env` as `ADMIN_CODE_HASH`. This is separate from the optional guest `ACCESS_CODE`. Guests still enter only their names.
+
+Start the server using `npm start` after generating the code or updating the backend. This starts a small supervisor and the photo server. `npm run dev` runs the worker directly, so restart and full-stop controls are unavailable in that mode.
+
+To open the controls, enter your `admin-…` code in the name box. If your name is already saved, click your name above the title to reopen the box. The code is masked while typing, never saved as a guest name, and opens the admin page on the photo server. The updated uploader files must be published to GitHub Pages for this name-box shortcut to work there. You can also open `https://nickserverphotodump.duckdns.org/admin` directly.
+
+Admin sign-in requires HTTPS for remote clients. A one-use, 60-second ticket transfers sign-in from GitHub Pages to the backend. The backend creates an HttpOnly, SameSite=Strict admin cookie that expires after 30 minutes, and server commands require its CSRF token. Admin sessions are invalidated by a restart. No credentials are embedded in frontend code, URLs sent to the server, or guest photo metadata.
+
+Controls include:
+
+- Pause/resume new uploads. This setting survives restarts; the album remains available.
+- Restart the Node photo server. The supervisor relaunches it, and you sign in again.
+- Stop the photo server completely. Both the worker and supervisor exit. This does not power off the computer or stop Caddy. Bring the photo server back with `npm start` on the computer.
+
+**Restart and full stop both require typing exactly `confirm` in a separate dialog.** The server also verifies that confirmation; clicking a button alone cannot stop it. Active requests are allowed to finish first, with a 10-minute maximum before remaining connections are disconnected. Stopping your terminal or pressing Ctrl+C also stops the server; there is no automatic startup service installed.
+
+Use `npm run admin:code` again to rotate a lost code, then stop and start the server locally so the new credential takes effect. Do not share the owner code with wedding guests. The `.admin-state.json` file inside photo storage records only whether new uploads are paused.
+
+## Guest service messages
+
+The uploader checks service status every 10 seconds and shows these messages exactly:
+
+- Paused uploads: `We paused uploads for a bit -Nick`
+- Stopped server: `Service not running right now -Nick`
+- Restarting server: `Service is restarting -Nick`
+
+Pausing disables new uploads while keeping the slideshow and album available. The form returns automatically after the service resumes, and selected files are retained. The Upload button is hidden until files are selected and disappears after a successful batch; it remains available for retry after a failed batch. The mobile card is centered.
+
+A fully stopped Node process cannot serve its own message. The supervisor therefore writes public-only `status.json` and `status.html` files in `.runtime/public-status`; Caddy serves those on upstream errors. The files contain no owner credentials or photo metadata. Restarting updates the message before stopping the worker. An HTTP 503 JSON response plus CORS-enabled preflight lets the GitHub Pages frontend read the status instead of receiving a generic CORS failure.
+
+The updated proxy configuration is active on this machine. To keep it after restarting Caddy or rebooting, run from the project directory:
+
+```sh
+sudo install -m 644 .runtime/Caddyfile /etc/caddy/Caddyfile
+```
+
+The prepared file preserves the existing proxy and logging settings and adds the tested error handler. `Caddyfile.example` contains the same fallback for a fresh installation; adjust its project path before using it elsewhere. Caddy needs read access to `.runtime/public-status` (directory 755, message files 644). A local deployment can override the status directory with the shell environment variable `WEDDING_STATUS_DIR`, but its Caddy root must match. The existing Caddy service isolates `/tmp`, so public message files deliberately live in the project directory instead.
+
 ## Verification
 
 ```sh
