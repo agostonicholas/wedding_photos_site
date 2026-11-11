@@ -1,4 +1,4 @@
-const { json } = window.Wedding;
+const { json, resolveUrl } = window.Wedding;
 // The album does not use configuration, but still handle a configuration request failure.
 window.Wedding.config.catch(() => {});
 const statusEl = document.getElementById('gallery-status');
@@ -19,11 +19,11 @@ function renderGallery(items) {
     const card = document.createElement('article');
     card.className = 'gallery-card';
     const link = document.createElement('a');
-    link.href = item.url;
+    link.href = resolveUrl(item.url);
     link.target = '_blank';
     link.rel = 'noopener';
     const image = document.createElement('img');
-    image.src = item.url;
+    image.src = resolveUrl(item.url);
     image.alt = `Wedding photo shared by ${item.uploaderName || 'Guest'}`;
     image.loading = 'lazy';
     const footer = document.createElement('footer');

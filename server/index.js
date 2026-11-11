@@ -1,6 +1,7 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const { networkInterfaces } = require('os');
 const { randomBytes, createHmac, timingSafeEqual } = require('crypto');
 const { Transform, pipeline } = require('stream');
 const express = require('express');
@@ -59,15 +60,20 @@ async function createApp(config = createConfig(), dependencies = {}) {
     if (origin && origin !== `${req.protocol}://${req.get('host')}` && !config.corsOrigins.includes(origin)) return res.status(403).json({ ok: false, error: 'This origin is not allowed.' });
     next();
   });
-  app.use(cors({ origin: config.corsOrigins, credentials: true }));
+  app.use(cors({ origin: config.corsOrigins, credentials: true, exposedHeaders: ['X-Wedding-Device'] }));
   app.use(express.json({ limit: '8kb' }));
   const cookieOptions = { httpOnly: true, sameSite: 'lax', secure: config.secureCookies, maxAge: config.sessionTTL, path: '/' };
   app.use((req, res, next) => {
     req.cookies = parseCookies(req.headers.cookie);
-    let device = decodeToken(req.cookies[DEVICE_COOKIE]);
+    let device = decodeToken(req.get('X-Wedding-Device')) || decodeToken(req.cookies[DEVICE_COOKIE]);
     if (!/^[a-f0-9]{32}$/.test(device || '')) {
       device = randomBytes(16).toString('hex');
       res.cookie(DEVICE_COOKIE, encodeToken(device), cookieOptions);
+    }
+    const origin = req.get('origin');
+    if (origin && origin !== `${req.protocol}://${req.get('host')}` && config.corsOrigins.includes(origin)) {
+      res.set('X-Wedding-Device', encodeToken(device));
+      res.set('Cache-Control', 'no-store');
     }
     req.deviceId = device;
     req.guestName = normalizeName(req.cookies[NAME_COOKIE]);
@@ -250,7 +256,7 @@ async function createApp(config = createConfig(), dependencies = {}) {
     } catch (error) { if (error.code === 'ENOENT') return next(); next(error); }
   });
   // List public assets explicitly; never expose server code, uploads, or .env.
-  for (const [route, file] of [['/', 'index.html'], ['/index.html', 'index.html'], ['/album', 'album.html'], ['/album.html', 'album.html'], ['/app.js', 'app.js'], ['/album.js', 'album.js'], ['/client.js', 'client.js']]) {
+  for (const [route, file] of [['/', 'index.html'], ['/index.html', 'index.html'], ['/album', 'album.html'], ['/album.html', 'album.html'], ['/app.js', 'app.js'], ['/album.js', 'album.js'], ['/client.js', 'client.js'], ['/site-config.js', 'site-config.js']]) {
     app.get(route, (_req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(path.join(config.rootDir, file)); });
   }
   app.use((_req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));
@@ -265,11 +271,28 @@ async function createApp(config = createConfig(), dependencies = {}) {
 if (require.main === module) {
   const config = createConfig();
   createApp(config).then(app => {
-    const server = app.listen(config.port, config.host, () => {
-      console.log(`Wedding uploader listening on http://${config.host}:${server.address().port}`);
+    const server = app.listen(config.port, config.host);
+    server.once('listening', () => {
+      const port = server.address().port;
+      const allInterfaces = config.host === '0.0.0.0' || config.host === '::';
+      const localHost = allInterfaces ? '127.0.0.1' : config.host;
+      const localAddress = localHost.includes(':') ? `[${localHost}]` : localHost;
+      console.log(`Wedding uploader listening on http://${localAddress}:${port}`);
+      if (allInterfaces) {
+        for (const address of new Set(Object.values(networkInterfaces()).flat().filter(value => value.family === 'IPv4' && !value.internal).map(value => value.address))) {
+          console.log(`Network access: http://${address}:${port}`);
+        }
+      }
       console.log(`Photo storage: ${config.uploadsRoot}`);
     });
-    server.on('error', error => { console.error(error.message); process.exitCode = 1; });
+    server.on('error', error => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${config.port} is already in use on ${config.host}. Stop the existing server or choose another PORT before starting.`);
+      } else {
+        console.error(`Unable to start server: ${error.message}`);
+      }
+      process.exitCode = 1;
+    });
   }).catch(error => { console.error(error.message); process.exitCode = 1; });
 }
 module.exports = { createApp, parseCookies };

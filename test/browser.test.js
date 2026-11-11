@@ -11,17 +11,17 @@ async function waitFor(predicate) {
   }
   assert.fail('Browser condition did not complete');
 }
-function page(t, name, handlers) {
-  const dom = new JSDOM(source(name), { url: 'http://127.0.0.1:4000/', runScripts: 'outside-only', pretendToBeVisual: true });
+function page(t, name, handlers, options = {}) {
+  const dom = new JSDOM(source(name), { url: options.url || 'http://127.0.0.1:4000/', runScripts: 'outside-only', pretendToBeVisual: true });
   t.after(() => dom.window.close());
   const window = dom.window;
   const intervals = [];
   const requests = [];
   window.setInterval = (callback, duration) => { intervals.push({ callback, duration }); return intervals.length; };
-  window.fetch = async (url, options) => {
-    requests.push({ url, options });
-    const value = await handlers(url, options);
-    return { status: 200, ok: true, json: async () => value };
+  window.fetch = async (url, requestOptions) => {
+    requests.push({ url, options: requestOptions });
+    const value = await handlers(url, requestOptions);
+    return { status: 200, ok: true, headers: { get: name => options.responseHeaders?.[name] || null }, json: async () => value };
   };
   return { window, intervals, requests, run: name => window.eval(source(name)) };
 }
@@ -110,4 +110,67 @@ test('album polls, preserves safe labels, and requests browser ownership from th
   await waitFor(() => document.getElementById('gallery-status').textContent.includes('No photos uploaded'));
   assert.ok(view.requests.some(request => request.url.includes('mine=true')));
   assert.equal(document.querySelectorAll('.gallery-card').length, 0);
+});
+test('GitHub Pages routes API requests, slideshow images, and uploads to the home backend', async t => {
+  const backend = 'https://nickserverphotodump.duckdns.org';
+  const token = `${'a'.repeat(32)}.${'b'.repeat(64)}`;
+  const item = { id: 'one', mimetype: 'image/png', url: '/media/0/main-event/2026-01-01/photo.png' };
+  const view = page(t, 'index.html', async url => url.endsWith('/api/config') ? config : { ok: true, items: [item] }, {
+    url: 'https://agostonicholas.github.io/wedding_photos_site/',
+    responseHeaders: { 'X-Wedding-Device': token },
+  });
+  const { window } = view;
+  window.localStorage.setItem('weddingUploaderName', 'Guest');
+  let uploadUrl;
+  const uploadHeaders = {};
+  class FakeXHR extends window.EventTarget {
+    constructor() { super(); this.upload = new window.EventTarget(); }
+    open(method, url) { assert.equal(method, 'POST'); uploadUrl = url; }
+    setRequestHeader(name, value) { uploadHeaders[name] = value; }
+    send() {
+      this.status = 200;
+      this.responseText = JSON.stringify({ ok: true, files: [{}] });
+      queueMicrotask(() => this.dispatchEvent(new window.Event('load')));
+    }
+  }
+  window.XMLHttpRequest = FakeXHR;
+  view.run('site-config.js'); view.run('client.js'); view.run('app.js');
+  const document = window.document;
+  const input = document.getElementById('photos');
+  await waitFor(() => !input.disabled && document.querySelector('#slideshow img'));
+  assert.equal(view.requests[0].url, backend + '/api/config');
+  const recent = view.requests.find(request => request.url.endsWith('/api/recent'));
+  assert.equal(recent.url, backend + '/api/recent');
+  assert.equal(recent.options.headers['X-Wedding-Device'], token);
+  assert.equal(recent.options.credentials, 'omit');
+  assert.equal(document.querySelector('#slideshow img').src, backend + item.url);
+  let files = [new window.File(['data'], 'photo.png', { type: 'image/png' })];
+  Object.defineProperty(input, 'files', { get: () => files });
+  Object.defineProperty(input, 'value', { get: () => files.length ? 'photo.png' : '', set: value => { if (!value) files = []; } });
+  input.dispatchEvent(new window.Event('change'));
+  document.getElementById('upload-form').dispatchEvent(new window.Event('submit', { cancelable: true }));
+  await waitFor(() => !input.files.length);
+  assert.equal(uploadUrl, backend + '/upload');
+  assert.equal(uploadHeaders['X-Wedding-Device'], token);
+  assert.equal(window.localStorage.getItem(`weddingDevice:${backend}`), token);
+});
+test('GitHub Pages album uses backend URLs for both images and original links', async t => {
+  const backend = 'https://nickserverphotodump.duckdns.org';
+  const view = page(t, 'album.html', async url => url.endsWith('/api/config') ? config : {
+    ok: true, total: 1, items: [{ id: 'one', uploaderName: 'Guest', url: '/media/0/main-event/2026-01-01/photo.png', uploadedAt: 1 }],
+  }, { url: 'https://agostonicholas.github.io/wedding_photos_site/album.html' });
+  view.run('site-config.js'); view.run('client.js'); view.run('album.js');
+  await waitFor(() => view.window.document.querySelector('.gallery-card'));
+  for (const element of view.window.document.querySelectorAll('.gallery-card a, .gallery-card img')) {
+    assert.ok((element.href || element.src).startsWith(backend + '/media/'));
+  }
+  assert.ok(view.requests.every(request => request.url.startsWith(backend + '/api/')));
+});
+test('server-hosted and LAN pages keep using their own origin', async t => {
+  const view = page(t, 'index.html', async () => config, { url: 'http://192.168.1.32:4000/' });
+  view.run('site-config.js'); view.run('client.js');
+  await view.window.Wedding.config;
+  assert.equal(view.window.APP_CONFIG.apiBase, '');
+  assert.equal(view.requests[0].url, '/api/config');
+  assert.equal(view.requests[0].options.credentials, 'same-origin');
 });

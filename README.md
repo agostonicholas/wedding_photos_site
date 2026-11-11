@@ -1,6 +1,6 @@
 # Wedding Photo Drop
 
-A Node/Express server serves the uploader, live album, and original media together. The browser uses relative URLs, so localhost, a home-network address, and the eventual public hostname all use the same server.
+A Node/Express server serves the uploader, live album, and original media together. Pages opened on the home server use relative API URLs. The invitation frontend on GitHub Pages uses the HTTPS backend configured in `site-config.js`.
 
 ## Run locally
 
@@ -31,7 +31,7 @@ New originals are stored at `PHOTO_STORAGE_ROOT/originals/main-event/YYYY-MM-DD/
 
 The old `server/uploads` and literal `<<SET_ABSOLUTE_PHOTO_STORAGE_PATH>>` storage roots are also read automatically, including filenames such as `photo.png_91dcec99ab9d`. Originals are not renamed, copied, or deleted. `LEGACY_STORAGE_ROOTS` can override these read-only sources with a comma-separated list of storage roots. Keep their order stable because media URLs include a source index.
 
-A signed device cookie identifies uploads from this browser. The server persists its signing secret in `PHOTO_STORAGE_ROOT/.session-secret`, unless `SESSION_SECRET` supplies one. Back up that secret with the photos. Old unsigned cookies are intentionally replaced: old photos still appear under All Photos, but cannot safely be claimed by the new browser filter. Names label photos and do not establish ownership. Clearing cookies or changing browsers creates a new identity.
+A signed device cookie identifies uploads from this browser. The server persists its signing secret in `PHOTO_STORAGE_ROOT/.session-secret`, unless `SESSION_SECRET` supplies one. Back up that secret with the photos. Old unsigned cookies are intentionally replaced: old photos still appear under All Photos, but cannot safely be claimed by the new browser filter. On GitHub Pages, the server issues a signed anonymous device token that the frontend stores for that API origin and sends in the `X-Wedding-Device` header; this keeps the browser filter working without third-party cookies. Names label photos and do not establish ownership. Clearing cookies or changing browsers creates a new identity.
 
 The album and background slideshow refresh every 10 seconds while visible; the disk index is cached for up to 5 seconds. The album supports loading additional pages. Photos are sorted by saved upload time, falling back to filesystem modification time for older files.
 
@@ -54,6 +54,16 @@ Files are checked before publishing. A failed save removes that batch's new orig
 Only enable `TRUST_PROXY=loopback` when the proxy actually runs on this machine. It allows the server to use the proxy's client IP and HTTPS information. For local HTTP testing, keep production mode off, or explicitly set `SECURE_COOKIES=false` in a separate test configuration. CORS denies other origins by default; `CORS_ORIGINS` can list explicitly trusted origins if needed.
 
 Without `ACCESS_CODE`, anyone who can reach the server can upload and view originals. With it, pages, media, and photo APIs require a signed, expiring access cookie. `/health`, upload-limit settings, and login assets remain public. The access code is shared guest access, not individual user accounts.
+
+## Invitation link on GitHub Pages
+
+Keep the invitation link on `https://agostonicholas.github.io`. Load `site-config.js` before `client.js` on both frontend pages. It selects `https://nickserverphotodump.duckdns.org` as the API base only on that GitHub Pages hostname. Local and server-hosted pages continue to use their own origin. API requests, uploads, slideshow images, and album links all use the selected backend.
+
+Set `CORS_ORIGINS=https://agostonicholas.github.io` in the server's `.env` and restart it. This origin is already configured in this working copy; no repository path belongs in the CORS setting. The server permits that frontend and exposes a signed anonymous device token, while rejecting other origins. Guests still need no access code. If temporary access protection is enabled, the frontend directs guests to the backend login and uploader.
+
+GitHub Pages serves static files and cannot run the Express API. Deploy the updated HTML, `site-config.js`, `client.js`, `app.js`, and `album.js` to GitHub Pages; copying only the server changes will not update the invitation site. No GitHub deployment has been performed automatically.
+
+The backend must be reachable using HTTPS: [browsers block HTTP API requests from an HTTPS page](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Mixed_content). Update `nickserverphotodump` in the [DuckDNS dashboard](https://www.duckdns.org/) to the current public IPv4, and forward TCP 80 and 443 to the Caddy server at `192.168.1.32`. Forwarding only port 4000 does not supply HTTPS for the invitation frontend. The existing Caddy configuration proxies that hostname to localhost:4000.
 
 ## Verification
 

@@ -90,6 +90,11 @@ h1 {
   color: var(--text);
 }
 
+#hero-heading {
+  font-family: 'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive;
+  font-weight: 400;
+}
+
 .tagline {
   margin: 0 0 1.5rem;
   color: var(--muted);

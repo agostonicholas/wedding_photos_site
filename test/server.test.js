@@ -56,7 +56,7 @@ async function filesUnder(directory) {
 test('serves both pages and assets without exposing repository files', async t => {
   const { browser } = await setup(t);
   const client = browser();
-  for (const url of ['/', '/album', '/album.html', '/app.js', '/album.js', '/client.js', '/styles.css', '/auth.js']) assert.equal((await client.request(url)).status, 200, url);
+  for (const url of ['/', '/album', '/album.html', '/app.js', '/album.js', '/client.js', '/site-config.js', '/styles.css', '/auth.js']) assert.equal((await client.request(url)).status, 200, url);
   const login = await client.request('/login');
   assert.equal(login.status, 302);
   assert.equal(new URL(login.headers.get('location'), 'http://localhost').pathname, '/');
@@ -313,4 +313,91 @@ test('wedding guests can open pages, upload, and view photos without a code in p
   const freshGuest = browser();
   assert.equal((await freshGuest.request(uploaded.servedPath)).status, 200);
   assert.equal((await freshGuest.request(uploaded.servedPath + '.meta.json')).status, 404);
+});
+test('startup reports an occupied port without a TypeError or false success message', async t => {
+  const { base, dir } = await setup(t);
+  const { execFile } = require('node:child_process');
+  const { promisify } = require('node:util');
+  const port = new URL(base).port;
+  await assert.rejects(promisify(execFile)(process.execPath, [path.join(__dirname, '..', 'server/index.js')], {
+    env: { ...process.env, PHOTO_STORAGE_ROOT: path.join(dir, 'startup'), LEGACY_STORAGE_ROOTS: '', HOST: '127.0.0.1', PORT: port, NODE_ENV: 'test', ACCESS_CODE: '' },
+    timeout: 5000,
+  }), error => {
+    assert.equal(error.code, 1);
+    assert.match(error.stderr, new RegExp(`Port ${port} is already in use`));
+    assert.doesNotMatch(error.stderr, /TypeError|Cannot read properties/);
+    assert.doesNotMatch(error.stdout, /listening|Photo storage/);
+    return true;
+  });
+  assert.equal((await fetch(base + '/health')).status, 200);
+});
+test('startup announces the assigned port only after successfully listening', async t => {
+  const { spawn } = require('node:child_process');
+  const { once } = require('node:events');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'wedding-startup-'));
+  const child = spawn(process.execPath, [path.join(__dirname, '..', 'server/index.js')], {
+    env: { ...process.env, PHOTO_STORAGE_ROOT: dir, LEGACY_STORAGE_ROOTS: '', HOST: '0.0.0.0', PORT: '0', NODE_ENV: 'test', ACCESS_CODE: '' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = once(child, 'exit');
+      child.kill('SIGTERM');
+      await exited;
+    }
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+  const base = await new Promise((resolve, reject) => {
+    let output = '';
+    const timer = setTimeout(() => reject(new Error('Startup did not complete')), 5000);
+    const finish = (error, url) => {
+      clearTimeout(timer);
+      child.off('error', onError);
+      child.off('exit', onExit);
+      child.stdout.off('data', onData);
+      if (error) reject(error); else resolve(url);
+    };
+    const onError = error => finish(error);
+    const onExit = code => finish(new Error(`Server exited before listening: ${code}`));
+    const onData = data => {
+      output += data.toString();
+      const match = output.match(/Wedding uploader listening on (http:\/\/127\.0\.0\.1:(\d+))/);
+      if (match) {
+        assert.notEqual(match[2], '0');
+        assert.doesNotMatch(output, /http:\/\/0\.0\.0\.0/);
+        finish(null, match[1]);
+      }
+    };
+    child.once('error', onError);
+    child.once('exit', onExit);
+    child.stdout.on('data', onData);
+  });
+  assert.equal((await fetch(base + '/health')).status, 200);
+});
+test('GitHub Pages can upload and identify its own photos without third-party cookies', async t => {
+  const origin = 'https://agostonicholas.github.io';
+  const { base } = await setup(t, { CORS_ORIGINS: origin });
+  const preflight = await fetch(base + '/upload', {
+    method: 'OPTIONS', headers: { origin, 'access-control-request-method': 'POST', 'access-control-request-headers': 'x-wedding-device' },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), origin);
+  assert.match(preflight.headers.get('access-control-allow-headers'), /x-wedding-device/i);
+  const bootstrap = await fetch(base + '/api/config', { headers: { origin } });
+  const token = bootstrap.headers.get('x-wedding-device');
+  assert.match(token, /^[a-f0-9]{32}\.[a-f0-9]{64}$/);
+  assert.equal(bootstrap.headers.get('cache-control'), 'no-store');
+  assert.match(bootstrap.headers.get('access-control-expose-headers'), /X-Wedding-Device/);
+  await bootstrap.json();
+  const options = multipart();
+  options.headers = { origin, 'x-wedding-device': token };
+  assert.equal((await fetch(base + '/upload', options)).status, 200);
+  const gallery = await (await fetch(base + '/api/gallery?mine=true', { headers: { origin, 'x-wedding-device': token } })).json();
+  assert.equal(gallery.total, 1);
+  assert.equal(gallery.items[0].mine, true);
+  assert.equal(gallery.items[0].deviceId, undefined);
+  const changed = token.slice(0, -1) + (token.endsWith('0') ? '1' : '0');
+  const stranger = await (await fetch(base + '/api/gallery?mine=true', { headers: { origin, 'x-wedding-device': changed } })).json();
+  assert.equal(stranger.total, 0);
+  assert.equal((await fetch(base + '/api/gallery', { headers: { origin: 'https://unrelated.example' } })).status, 403);
 });

@@ -1,4 +1,4 @@
-const { json, storage, config: configPromise } = window.Wedding;
+const { json, storage, resolveUrl, loginUrl, getDeviceToken, config: configPromise } = window.Wedding;
 const form = document.getElementById('upload-form');
 const fileInput = document.getElementById('photos');
 const fileCount = document.getElementById('file-count');
@@ -75,7 +75,7 @@ async function refreshSlides() {
     slideshowEl.classList.toggle('is-empty', !slideItems.length);
     for (const item of slideItems) {
       const image = document.createElement('img');
-      image.src = item.url;
+      image.src = resolveUrl(item.url);
       image.alt = '';
       image.addEventListener('error', () => image.remove(), { once: true });
       slideshowEl.append(image);
@@ -87,7 +87,9 @@ async function refreshSlides() {
 function sendUpload(files) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open('POST', '/upload');
+    request.open('POST', resolveUrl('/upload'));
+    const deviceToken = getDeviceToken();
+    if (deviceToken) request.setRequestHeader('X-Wedding-Device', deviceToken);
     request.timeout = 10 * 60 * 1000;
     request.upload.addEventListener('progress', event => {
       if (!event.lengthComputable) return;
@@ -98,7 +100,7 @@ function sendUpload(files) {
     request.addEventListener('load', () => {
       let payload;
       try { payload = JSON.parse(request.responseText); } catch { payload = {}; }
-      if (request.status === 401) window.location.assign('/login');
+      if (request.status === 401) window.location.assign(loginUrl);
       if (request.status >= 200 && request.status < 300 && payload.ok) resolve(payload);
       else reject(new Error(payload.error || 'Upload failed. Your files are still selected; try again.'));
     });
