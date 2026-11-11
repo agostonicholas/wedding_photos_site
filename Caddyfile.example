@@ -1,0 +1,4 @@
+# Install Caddy separately and use this as its configuration after forwarding is ready.
+nickserverphotodump.duckdns.org {
+    reverse_proxy 127.0.0.1:4000
+}

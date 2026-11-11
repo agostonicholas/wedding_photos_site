@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+server/uploads/
+server/cache/
+<<SET_ABSOLUTE_PHOTO_STORAGE_PATH>>/
+coverage/
+*.log

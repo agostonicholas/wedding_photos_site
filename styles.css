@@ -86,7 +86,7 @@ body {
 h1 {
   margin: 0 0 0.75rem;
   font-size: clamp(2rem, 8vw, 2.75rem);
-  font-family: 'Share the Love', cursive;
+  font-family: Georgia, serif;
   color: var(--text);
 }
 
@@ -408,3 +408,10 @@ form {
   min-height: 1.2em;
   margin: 0;
 }
+
+progress { width: 100%; height: 8px; accent-color: var(--pink); }
+#access-code { padding: 0.85rem; border: 1px solid var(--muted); border-radius: 12px; font: inherit; }
+[hidden] { display: none !important; }
+#load-more { margin-top: 1.5rem; }
+.gallery-card footer { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

@@ -11,11 +11,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script>
-      window.APP_CONFIG = {
-        apiBase: 'https://nickserverphotodump.duckdns.org'
-      };
-    </script>
   </head>
   <body class="album-body">
     <main class="album-wrapper">
@@ -23,20 +18,22 @@
         <div>
           <p class="eyebrow">Wedding Photo Drop</p>
           <h1>Nick and Sara's Wedding Album</h1>
-          <p class="tagline">Browse everything guests have shared. New uploads appear here immediately.</p>
+          <p class="tagline">Browse everything guests have shared. New uploads appear automatically within a few seconds.</p>
         </div>
         <a class="primary-btn" href="index.html">Back to uploader</a>
       </div>
 
       <div class="gallery-filters" role="group" aria-label="Album filters">
-        <button class="filter-btn active" data-filter="all">All Photos</button>
-        <button class="filter-btn" data-filter="mine">Photos I Uploaded</button>
+        <button class="filter-btn active" data-filter="all" aria-pressed="true">All Photos</button>
+        <button class="filter-btn" data-filter="mine" aria-pressed="false">Photos From This Browser</button>
       </div>
 
       <div id="gallery-status" class="gallery-status">Loading recent photos…</div>
       <section id="gallery-grid" class="gallery-grid" aria-live="polite"></section>
+      <button id="load-more" class="primary-btn" type="button" hidden>Load more photos</button>
     </main>
 
+    <script src="client.js" defer></script>
     <script src="album.js" defer></script>
   </body>
 </html>

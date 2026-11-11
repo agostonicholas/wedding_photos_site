@@ -11,11 +11,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script>
-      window.APP_CONFIG = {
-        apiBase: 'https://nickserverphotodump.duckdns.org'
-      };
-    </script>
   </head>
   <body>
     <div class="slideshow" id="slideshow" aria-hidden="true">
@@ -41,7 +36,7 @@
         <!-- Selecting files triggers client-side validation in app.js -->
         <label for="photos" class="picker">
           <span>Choose photos</span>
-          <span class="picker-hint">Accepts Photos and Videos · 5 max</span>
+          <span class="picker-hint" id="picker-hint">Accepts Photos and Videos · 5 max</span>
         </label>
         <div class="file-count" id="file-count">0 / 5 selected</div>
 
@@ -52,7 +47,7 @@
           <a class="primary-btn" href="album.html">View Album</a>
         </div>
 
-        <p class="limit-note">
+        <p class="limit-note" id="limit-note">
           Need more? Send batches of five files or 100MB max — then repeat. Videos are saved for us but aren’t
           shown on the album.
         </p>
@@ -64,10 +59,11 @@
     </main>
 
     <div class="welcome-overlay" id="welcome-overlay" hidden>
-      <div class="welcome-card">
-        <h2>Welcome! Who's sharing?</h2>
+      <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcome-heading">
+        <h2 id="welcome-heading">Welcome! Who's sharing?</h2>
         <p class="tagline">We use your name to label photos in the live album so everyone knows who shared what.</p>
         <form id="welcome-form">
+          <label for="guest-name-input">Your name</label>
           <input
             type="text"
             id="guest-name-input"
@@ -82,6 +78,7 @@
       </div>
     </div>
 
+    <script src="client.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

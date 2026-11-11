@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wedding Photo Drop · Welcome</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/auth.js" defer></script>
+  </head>
+  <body>
+    <main class="upload-card">
+      <p class="eyebrow">Nick and Sara's Wedding</p>
+      <h1>Welcome!</h1>
+      <p class="tagline">Enter the wedding access code to share and view photos.</p>
+      <form id="access-form">
+        <label for="access-code">Wedding access code</label>
+        <input id="access-code" name="code" type="password" autocomplete="current-password" required maxlength="200" />
+        <button class="primary-btn" type="submit">Continue</button>
+        <p id="access-error" class="welcome-error" role="alert"></p>
+      </form>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "wedding_photos_site",
+  "version": "1.0.0",
+  "description": "Wedding photo and video collection with a live shared album",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js",
+    "stress": "node scripts/stress.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "file-type": "^19.6.0",
+    "form-data": "^4.0.5",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.19"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
